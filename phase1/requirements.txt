@@ -1,0 +1,12 @@
+# Core LLM + API
+openai>=1.13.0
+fastapi>=0.115.0
+uvicorn>=0.30.0
+python-dotenv>=1.0.1
+
+# Multi-agent / LangGraph
+langgraph>=0.1.45
+
+# Optional utilities
+pydantic>=2.7.0
+orjson>=3.10.0
