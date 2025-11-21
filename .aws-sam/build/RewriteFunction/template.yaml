@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: The Evolving Humanizer - Serverless API (Phase 2)
+
+# --------------------------------------------------------------------
+# ✅ NEW SECTION: Parameters
+# This tells AWS to fetch the key from your account settings (SSM)
+# --------------------------------------------------------------------
+Parameters:
+  OpenAIApiKey:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /humanizer/openai_key
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 512
+    Runtime: python3.10
+    Environment:
+      Variables:
+        # This passes the fetched key to your Python code
+        OPENAI_API_KEY: !Ref OpenAIApiKey
+
+Resources:
+  RewriteFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: EvolvingHumanizer-Rewrite
+      CodeUri: .
+      Handler: phase1.app.handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AmazonSSMReadOnlyAccess
+      Events:
+        RewriteApi:
+          Type: Api
+          Properties:
+            Path: /rewrite
+            Method: POST
+        HealthApi:
+          Type: Api
+          Properties:
+            Path: /
+            Method: GET
+
+Outputs:
+  ApiUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
