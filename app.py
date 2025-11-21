@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from graph.workflow import rewrite
+from phase1.graph.workflow import rewrite
 
 app = FastAPI()
 

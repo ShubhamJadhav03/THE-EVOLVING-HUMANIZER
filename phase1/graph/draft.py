@@ -1,9 +1,12 @@
-from llm import chat
+from pathlib import Path
+from phase1.llm import chat
 
-def draft_agent(text: str) ->str:
-    """This agent will generate humanise version of text based on original content provided."""
+PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "draft.md"
 
-    prompt = open("prompts/draft.md").read().format(text=text)
+
+def draft_agent(text: str) -> str:
+    """Generate a humanized version of the provided text."""
+
+    prompt_template = PROMPT_PATH.read_text(encoding="utf-8")
+    prompt = prompt_template.replace("{text}", text)
     return chat(prompt)
-
-    

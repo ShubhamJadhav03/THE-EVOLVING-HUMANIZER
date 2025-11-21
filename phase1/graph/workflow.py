@@ -1,18 +1,80 @@
-from graph.draft import draft_agent
-from graph.critic import critic_agent
-from graph.refine import refine_agent
+from typing import TypedDict
+from langgraph.graph import StateGraph, END
 
+from phase1.graph.draft import draft_agent
+from phase1.graph.critic import critic_agent
+from phase1.graph.refine import refine_agent
+
+
+# 1. State definition
+class AgentState(TypedDict):
+    original_task: str
+    current_text: str
+    critique: str
+    score: int
+    iterations: int
+
+
+# 2. Node: Drafter (first draft OR refinement)
+def drafter_node(state: AgentState):
+    if state["iterations"] == 0:
+        result = draft_agent(state["original_task"])
+    else:
+        result = refine_agent(state["current_text"], state["critique"])
+
+    return {
+        "current_text": result,
+        "iterations": state["iterations"] + 1
+    }
+
+
+# 3. Node: Critic
+def critic_node(state: AgentState):
+    review = critic_agent(state["current_text"])
+    return {
+        "score": review.get("score", 0),
+        "critique": review.get("critique", "")
+    }
+
+
+# 4. Logic Controller
+def should_continue(state: AgentState):
+    if state["score"] >= 8:
+        return END
+    if state["iterations"] > 3:
+        return END
+    return "drafter"
+
+
+# 5. Build graph
+workflow = StateGraph(AgentState)
+workflow.add_node("drafter", drafter_node)
+workflow.add_node("critic", critic_node)
+
+workflow.set_entry_point("drafter")
+workflow.add_edge("drafter", "critic")
+
+workflow.add_conditional_edges(
+    "critic",
+    should_continue,
+    {
+        END: END,
+        "drafter": "drafter"
+    }
+)
+
+app = workflow.compile()
+
+
+# 6. Entry function used by FastAPI
 def rewrite(text: str) -> str:
-    """This function will orchestrate the drafting, critiquing, and refining of the provided text."""
-    
-    draft = draft_agent(text)
+    inputs = {
+        "original_task": text,
+        "current_text": "",
+        "critique": "",
+        "score": 0,
+        "iterations": 0
+    }
 
-    for _ in range(3):  # Iterate the critique and refine process 3 times
-        review = critic_agent(draft)
-
-        if review["score"] >= 8:
-            return draft  # If score is satisfactory, return the draft
-        
-        draft = refine_agent(draft, review["critique"])
-    
-    return draft  # Return the final draft after all iterations
+    result = app.invoke(inputs)
+    return result["current_text"]
