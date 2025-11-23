@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: The Evolving Humanizer - Serverless API (Phase 2)
+Description: The Evolving Humanizer - Serverless API (Phase 2 & 3)
 Parameters:
   OpenAIApiKey:
     Type: AWS::SSM::Parameter::Value<String>
@@ -14,6 +14,11 @@ Globals:
       Variables:
         OPENAI_API_KEY:
           Ref: OpenAIApiKey
+  Api:
+    Cors:
+      AllowMethods: '''GET,POST,OPTIONS'''
+      AllowHeaders: '''content-type'''
+      AllowOrigin: '''*'''
 Resources:
   RewriteFunction:
     Type: AWS::Serverless::Function
@@ -24,11 +29,18 @@ Resources:
       Policies:
       - AWSLambdaBasicExecutionRole
       - AmazonSSMReadOnlyAccess
+      - DynamoDBCrudPolicy:
+          TableName: HumanizerFeedback
       Events:
         RewriteApi:
           Type: Api
           Properties:
             Path: /rewrite
+            Method: POST
+        FeedbackApi:
+          Type: Api
+          Properties:
+            Path: /feedback
             Method: POST
         HealthApi:
           Type: Api

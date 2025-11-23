@@ -1,10 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: The Evolving Humanizer - Serverless API (Phase 2)
+Description: The Evolving Humanizer - Serverless API (Phase 2 & 3)
 
 # --------------------------------------------------------------------
-# ✅ NEW SECTION: Parameters
-# This tells AWS to fetch the key from your account settings (SSM)
+# Parameters: Fetch OpenAI Key from SSM
 # --------------------------------------------------------------------
 Parameters:
   OpenAIApiKey:
@@ -18,8 +17,14 @@ Globals:
     Runtime: python3.10
     Environment:
       Variables:
-        # This passes the fetched key to your Python code
         OPENAI_API_KEY: !Ref OpenAIApiKey
+  
+  # ✅ CORS is correctly configured here
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,OPTIONS'"
+      AllowHeaders: "'content-type'"
+      AllowOrigin: "'*'"
 
 Resources:
   RewriteFunction:
@@ -31,11 +36,19 @@ Resources:
       Policies:
         - AWSLambdaBasicExecutionRole
         - AmazonSSMReadOnlyAccess
+        # 👇 SENIOR DEV FIX: Allow Lambda to Write to DynamoDB
+        - DynamoDBCrudPolicy:
+            TableName: HumanizerFeedback
       Events:
         RewriteApi:
           Type: Api
           Properties:
             Path: /rewrite
+            Method: POST
+        FeedbackApi:
+          Type: Api
+          Properties:
+            Path: /feedback
             Method: POST
         HealthApi:
           Type: Api

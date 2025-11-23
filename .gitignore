@@ -3,7 +3,6 @@ __pycache__/
 .env
 .vscode/
 logs/
-
-phase3/
-
-build/RewriteFunction/
+.aws-sam/
+phase3/node_modules/
+phase3/public/
