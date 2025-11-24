@@ -1,8 +1,14 @@
+# --- Python / Backend ---
 .venv
 __pycache__/
 .env
 .vscode/
 logs/
 .aws-sam/
+
+# --- React / Frontend ---
 phase3/node_modules/
-phase3/public/
+phase3/dist/             # <--- ADD THIS (Ignore build output)
+phase3/.env              # <--- ADD THIS (Protect frontend secrets)
+
+# ❌ REMOVED "phase3/public/" because you NEED that on GitHub!

@@ -1,7 +1,0 @@
-fastapi
-uvicorn
-mangum
-openai
-langgraph
-python-dotenv
-pydantic
