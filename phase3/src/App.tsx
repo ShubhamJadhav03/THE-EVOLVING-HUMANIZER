@@ -1,5 +1,5 @@
-
-import React, { useState, useMemo } from "react";
+// 1. Removed 'React' from import because in Vite/React 18+ it's not needed if unused
+import { useState, useMemo } from "react";
 import { Send, RefreshCw, Copy, Check, Paperclip, Trash2, ThumbsUp, ThumbsDown } from "lucide-react";
 
 // Fallback API URL if env var is missing
@@ -12,10 +12,10 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   
   // New State for Feedback (null = none, 1 = like, -1 = dislike)
-  const [feedbackStatus, setFeedbackStatus] = useState(null);
+  const [feedbackStatus, setFeedbackStatus] = useState<number | null>(null);
 
-  // Calculate word counts
-  const wordCount = (text) => {
+  // 2. Added type ': string' here
+  const wordCount = (text: string) => {
     if (!text) return 0;
     return text.trim().split(/\s+/).filter(Boolean).length;
   };
@@ -28,7 +28,7 @@ export default function App() {
     if (!input) return;
     setLoading(true);
     setOutput("");
-    setFeedbackStatus(null); // Reset feedback when generating new text
+    setFeedbackStatus(null); 
 
     try {
       const response = await fetch(`${API_URL}/rewrite`, {
@@ -53,11 +53,10 @@ export default function App() {
     }
   };
 
-  // 👇 NEW: Handle Feedback Submission
-  const handleFeedback = async (score) => {
+  // 3. Added type ': number' here
+  const handleFeedback = async (score: number) => {
     if (!output) return;
     
-    // Optimistic UI update (show highlight immediately)
     setFeedbackStatus(score);
 
     try {
@@ -73,7 +72,6 @@ export default function App() {
       console.log("Feedback saved successfully!");
     } catch (err) {
       console.error("Failed to save feedback:", err);
-      // Revert UI if it failed
       setFeedbackStatus(null);
     }
   };
@@ -106,7 +104,6 @@ export default function App() {
 
   return (
     <>
-      {/* Injecting Custom CSS Styles */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
 
@@ -204,8 +201,6 @@ export default function App() {
       `}</style>
 
       <div className="app-bg flex flex-col items-center">
-        
-        {/* Header Section */}
         <div className="w-full max-w-5xl text-center pt-16 pb-10 px-4">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/50 border border-slate-800 text-slate-400 text-[10px] font-bold tracking-wider mb-6">
             <span className="text-indigo-400">✨ AI POWERED</span>
@@ -218,10 +213,7 @@ export default function App() {
           </h1>
         </div>
 
-        {/* Main Content Grid */}
         <div className="w-full max-w-[1200px] px-4 grid grid-cols-1 lg:grid-cols-2 gap-6 mb-20">
-          
-          {/* Left Card: Input */}
           <div className="card">
             <div className="card-head">
               <div className="flex items-center gap-2">
@@ -260,7 +252,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Right Card: Output */}
           <div className="card">
             <div className="card-head">
               <div className="flex items-center gap-2">
@@ -281,7 +272,6 @@ export default function App() {
               </div>
 
               <div className="card-footer justify-between">
-                {/* 👇 NEW: Feedback Buttons */}
                 <div className="flex items-center gap-2">
                    <button 
                       className={`btn-icon ${feedbackStatus === 1 ? 'active-up' : ''}`} 
@@ -318,14 +308,11 @@ export default function App() {
               </div>
             </div>
           </div>
-
         </div>
 
-        {/* Footer */}
         <footer className="w-full text-center pb-8 text-slate-600 text-sm font-medium">
           <p>© 2025 The Evolving Humanizer. Built for creators.</p>
         </footer>
-
       </div>
     </>
   );
