@@ -3,17 +3,17 @@ import json
 import os
 import time
 from phase1.graph.workflow import rewrite
-from phase1.llm import chat
 
 # Connect to DynamoDB
 dynamodb = boto3.resource("dynamodb")
+# Ensure this matches your template.yaml table name
 jobs_table = dynamodb.Table("HumanizerJobs")
 
 def process_job(job_id, text):
-    print(f"👷 Worker started on Job {job_id}...")
+    print(f" Worker started on Job {job_id}...")
     
     try:
-        # 1. Update Status to Processing
+        # 1. Update Status to PROCESSING
         jobs_table.update_item(
             Key={'job_id': job_id},
             UpdateExpression="set #s = :s",
@@ -22,36 +22,42 @@ def process_job(job_id, text):
         )
         
         # 2. Do the Heavy Lifting (The Slow Part)
-        # We can now afford to use the SLOW loop (3 iterations) because we are async!
+        print(" Running LangGraph logic...")
         rewritten_text = rewrite(text)
         
         # 3. Save the Result
+        # 👇 FIX: We alias 'result' to '#r' because 'result' is a reserved word
         jobs_table.update_item(
             Key={'job_id': job_id},
-            UpdateExpression="set #s = :s, result = :r",
-            ExpressionAttributeNames={'#s': 'status'},
+            UpdateExpression="set #s = :s, #r = :r",
+            ExpressionAttributeNames={
+                '#s': 'status',
+                '#r': 'result'  # <--- The Fix
+            },
             ExpressionAttributeValues={
                 ':s': 'COMPLETED',
                 ':r': rewritten_text
             }
         )
-        print(f"✅ Job {job_id} Completed!")
+        print(f" Job {job_id} Completed!")
         
     except Exception as e:
-        print(f"❌ Job {job_id} Failed: {e}")
+        print(f" Job {job_id} Failed: {e}")
         jobs_table.update_item(
             Key={'job_id': job_id},
-            UpdateExpression="set #s = :s, error_msg = :e",
-            ExpressionAttributeNames={'#s': 'status'},
+            UpdateExpression="set #s = :s, #e = :e",
+            ExpressionAttributeNames={
+                '#s': 'status',
+                '#e': 'error_msg'
+            },
             ExpressionAttributeValues={
                 ':s': 'FAILED',
                 ':e': str(e)
             }
         )
 
-# This handler allows this file to be triggered by AWS Lambda
+# Handler for Lambda
 def handler(event, context):
-    
     job_id = event.get('job_id')
     text = event.get('text')
     
@@ -59,4 +65,5 @@ def handler(event, context):
         process_job(job_id, text)
         return {"status": "success"}
     else:
+        print("Invalid input event")
         return {"status": "error", "message": "Missing job_id or text"}

@@ -3,7 +3,7 @@ import { useState, useMemo } from "react";
 import { Send, Copy, Check, Paperclip, Trash2, ThumbsUp, ThumbsDown, Loader2 } from "lucide-react";
 
 // Fallback API URL if env var is missing
-const API_URL = "https://ebby2kzpz6.execute-api.ap-south-1.amazonaws.com/Prod";
+const API_URL = "https://qx8ntbgft7.execute-api.ap-south-1.amazonaws.com/Prod";
 
 export default function App() {
   const [input, setInput] = useState("");

@@ -21,9 +21,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# AWS Clients
-lambda_client = boto3.client('lambda')
-dynamodb = boto3.resource('dynamodb')
+# AWS Clients (Explicit Region is safer)
+REGION = os.environ.get("AWS_REGION", "ap-south-1")
+lambda_client = boto3.client('lambda', region_name=REGION)
+dynamodb = boto3.resource('dynamodb', region_name=REGION)
 
 # Table Names (Must match what is in template.yaml)
 JOBS_TABLE = "HumanizerJobs"
@@ -32,8 +33,8 @@ FEEDBACK_TABLE = "HumanizerFeedback"
 jobs_table = dynamodb.Table(JOBS_TABLE)
 feedback_table = dynamodb.Table(FEEDBACK_TABLE)
 
-# Worker Function Name (Passed from template.yaml environment variables)
-WORKER_FUNCTION_NAME = os.environ.get('WORKER_FUNCTION_NAME', 'EvolvingHumanizer-Worker')
+# Environment Variables
+WORKER_FUNCTION_NAME = os.environ.get('WORKER_FUNCTION_NAME')
 
 # Data Models
 class RewriteRequest(BaseModel):
@@ -50,7 +51,13 @@ class FeedbackRequest(BaseModel):
 # ==================================================================
 @app.post("/rewrite")
 def start_rewrite_job(payload: RewriteRequest):
+    # 🚨 SAFETY CHECK: If Worker Name is missing, crash with a helpful error
+    if not WORKER_FUNCTION_NAME:
+        print("❌ Error: WORKER_FUNCTION_NAME env var is missing!")
+        raise HTTPException(status_code=500, detail="Configuration Error: Worker Name missing")
+
     job_id = str(uuid.uuid4())
+    print(f"🚀 Starting Job {job_id} -> Worker: {WORKER_FUNCTION_NAME}")
     
     try:
         # A. Create the Ticket in DynamoDB
@@ -74,7 +81,7 @@ def start_rewrite_job(payload: RewriteRequest):
         return {"job_id": job_id, "status": "queued"}
         
     except Exception as e:
-        print(f"Error starting job: {e}")
+        print(f"❌ CRITICAL ERROR: {str(e)}") # This will show in CloudWatch
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================================================================
