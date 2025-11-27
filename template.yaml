@@ -1,25 +1,23 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: The Evolving Humanizer - Serverless API (Phase 2 & 3)
+Description: The Evolving Humanizer - Full Stack (Phase 6)
 
-# --------------------------------------------------------------------
-# Parameters: Fetch OpenAI Key from SSM
-# --------------------------------------------------------------------
 Parameters:
   OpenAIApiKey:
     Type: AWS::SSM::Parameter::Value<String>
     Default: /humanizer/openai_key
+  OpenAIModelId:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /humanizer/model_id
 
 Globals:
   Function:
-    Timeout: 60
     MemorySize: 512
     Runtime: python3.10
     Environment:
       Variables:
         OPENAI_API_KEY: !Ref OpenAIApiKey
-  
-  # ✅ CORS is correctly configured here
+        OPENAI_MODEL_ID: !Ref OpenAIModelId
   Api:
     Cors:
       AllowMethods: "'GET,POST,OPTIONS'"
@@ -27,18 +25,55 @@ Globals:
       AllowOrigin: "'*'"
 
 Resources:
+  # ==================================================================
+  # 1️⃣ DATABASES (The Memory)
+  # ==================================================================
+  HumanizerFeedbackTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: HumanizerFeedback
+      AttributeDefinitions:
+        - AttributeName: feedback_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: feedback_id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  HumanizerJobsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: HumanizerJobs
+      AttributeDefinitions:
+        - AttributeName: job_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: job_id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  # ==================================================================
+  # 2️⃣ API LAMBDA (The Receptionist)
+  # ==================================================================
   RewriteFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: EvolvingHumanizer-Rewrite
+      FunctionName: EvolvingHumanizer-API
       CodeUri: .
       Handler: phase1.app.handler
+      Timeout: 60
+      Environment:
+        Variables:
+          WORKER_FUNCTION_NAME: !Ref WorkerFunction
       Policies:
         - AWSLambdaBasicExecutionRole
         - AmazonSSMReadOnlyAccess
-        # 👇 SENIOR DEV FIX: Allow Lambda to Write to DynamoDB
         - DynamoDBCrudPolicy:
-            TableName: HumanizerFeedback
+            TableName: !Ref HumanizerFeedbackTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref HumanizerJobsTable
+        - LambdaInvokePolicy:
+            FunctionName: !Ref WorkerFunction
       Events:
         RewriteApi:
           Type: Api
@@ -50,11 +85,32 @@ Resources:
           Properties:
             Path: /feedback
             Method: POST
+        JobStatusApi:
+          Type: Api
+          Properties:
+            Path: /jobs/{job_id}
+            Method: GET
         HealthApi:
           Type: Api
           Properties:
             Path: /
             Method: GET
+
+  # ==================================================================
+  # 3️⃣ WORKER LAMBDA (The Brain)
+  # ==================================================================
+  WorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: EvolvingHumanizer-Worker
+      CodeUri: .
+      Handler: phase1.worker.handler
+      Timeout: 300
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AmazonSSMReadOnlyAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref HumanizerJobsTable
 
 Outputs:
   ApiUrl:

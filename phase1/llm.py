@@ -20,8 +20,10 @@ def _get_client() -> OpenAI:
 
 def chat(prompt: str) -> str:
     client = _get_client()
+    model_id =  os.getenv("OPENAI_MODEL_ID", "gpt-5-mini")
+
     res = client.chat.completions.create(
-        model="gpt-5-mini",
+        model = model_id,
         messages=[
             {
                 "role": "user",

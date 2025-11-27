@@ -1,6 +1,6 @@
-// 1. Removed 'React' from import because in Vite/React 18+ it's not needed if unused
+// 1. Added 'useEffect' and 'Loader2' icon
 import { useState, useMemo } from "react";
-import { Send, RefreshCw, Copy, Check, Paperclip, Trash2, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Send, RefreshCw, Copy, Check, Paperclip, Trash2, ThumbsUp, ThumbsDown, Loader2 } from "lucide-react";
 
 // Fallback API URL if env var is missing
 const API_URL = "https://ebby2kzpz6.execute-api.ap-south-1.amazonaws.com/Prod";
@@ -13,6 +13,8 @@ export default function App() {
   
   // New State for Feedback (null = none, 1 = like, -1 = dislike)
   const [feedbackStatus, setFeedbackStatus] = useState<number | null>(null);
+  // New State for Status Message (e.g. "Drafting...", "Refining...")
+  const [statusMsg, setStatusMsg] = useState("");
 
   // 2. Added type ': string' here
   const wordCount = (text: string) => {
@@ -23,14 +25,59 @@ export default function App() {
   const inWords = useMemo(() => wordCount(input), [input]);
   const outWords = useMemo(() => wordCount(output), [output]);
 
+  // 👇 THE NEW POLLING LOGIC (The "Are you done yet?" loop)
+  const pollJobStatus = async (jobId: string) => {
+    const maxRetries = 30; // 30 * 2s = 60 seconds max wait (enough for now)
+    let attempts = 0;
+
+    const checkStatus = async () => {
+      try {
+        const res = await fetch(`${API_URL}/jobs/${jobId}`);
+        const data = await res.json();
+
+        if (data.status === "COMPLETED") {
+          setOutput(data.result);
+          setStatusMsg("");
+          setLoading(false);
+          return;
+        } 
+        
+        if (data.status === "FAILED") {
+          setOutput(`❌ Error: ${data.error || "Job failed"}`);
+          setLoading(false);
+          return;
+        }
+
+        // Still processing? Update status and try again.
+        setStatusMsg("AI is thinking... (Drafting & Critiquing)");
+        attempts++;
+        
+        if (attempts < maxRetries) {
+          setTimeout(checkStatus, 2000); // Check again in 2 seconds
+        } else {
+          setOutput("⚠️ Request timed out. The AI took too long.");
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
+        setLoading(false);
+      }
+    };
+
+    // Start the first check
+    checkStatus();
+  };
+
   // Handle the API call
   const handleHumanize = async () => {
     if (!input) return;
     setLoading(true);
     setOutput("");
     setFeedbackStatus(null); 
+    setStatusMsg("Starting job...");
 
     try {
+      // 1. Request the Ticket
       const response = await fetch(`${API_URL}/rewrite`, {
         method: "POST",
         headers: {
@@ -44,11 +91,19 @@ export default function App() {
       }
 
       const data = await response.json();
-      setOutput(data.rewritten_text || "Result received but format undefined.");
+      
+      // 2. If we get a Ticket (job_id), start waiting
+      if (data.job_id) {
+        pollJobStatus(data.job_id);
+      } else {
+        // Fallback for synchronous responses (just in case)
+        setOutput(data.rewritten_text || "Result format error.");
+        setLoading(false);
+      }
+
     } catch (err) {
       console.error(err);
       setOutput("⚠️ Note: The API request failed. Please check your internet or API URL.");
-    } finally {
       setLoading(false);
     }
   };
@@ -205,7 +260,7 @@ export default function App() {
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/50 border border-slate-800 text-slate-400 text-[10px] font-bold tracking-wider mb-6">
             <span className="text-indigo-400">✨ AI POWERED</span>
             <span className="w-px h-3 bg-slate-700"></span>
-            <span>v1.0</span>
+            <span>v2.0 Async</span>
           </div>
 
           <h1 className="text-5xl md:text-6xl font-extrabold text-white leading-tight tracking-tight mb-4">
@@ -245,8 +300,8 @@ export default function App() {
                 </div>
 
                 <button className="btn-primary" onClick={handleHumanize} disabled={loading || !input}>
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  <span>{loading ? "Humanizing..." : "Humanize Text"}</span>
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  <span>{loading ? "Processing..." : "Humanize Text"}</span>
                 </button>
               </div>
             </div>
@@ -262,7 +317,13 @@ export default function App() {
             </div>
 
             <div className="card-body">
-               <div className="textarea-wrapper">
+               <div className="textarea-wrapper relative">
+                {/* Status Message Overlay */}
+                {loading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm z-10 rounded-xl">
+                    <span className="text-indigo-300 font-medium animate-pulse">{statusMsg || "Initializing..."}</span>
+                  </div>
+                )}
                 <textarea
                   readOnly
                   placeholder="The humanized result will appear here..."

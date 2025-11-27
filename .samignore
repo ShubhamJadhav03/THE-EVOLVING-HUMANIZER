@@ -1,0 +1,9 @@
+﻿.dvc/
+data/
+.dvcignore
+.git/
+.venv/
+venv/
+phase3/
+__pycache__/
+*/__pycache__/
