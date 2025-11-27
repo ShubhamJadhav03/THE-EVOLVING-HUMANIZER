@@ -9,6 +9,10 @@ It learns from user preferences over time by capturing interaction data and auto
 
 ---
 
+
+https://github.com/user-attachments/assets/d952c909-1b7e-4db6-b94a-d4c5dd9b082a
+
+
 ## 🏛️ **Architecture**
 
 This project implements an **Event-Driven, Asynchronous Architecture** to handle complex LLM workflows without hitting API Gateway timeouts.
