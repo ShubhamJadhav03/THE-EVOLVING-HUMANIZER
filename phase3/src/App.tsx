@@ -1,6 +1,6 @@
 // 1. Added 'useEffect' and 'Loader2' icon
 import { useState, useMemo } from "react";
-import { Send, RefreshCw, Copy, Check, Paperclip, Trash2, ThumbsUp, ThumbsDown, Loader2 } from "lucide-react";
+import { Send, Copy, Check, Paperclip, Trash2, ThumbsUp, ThumbsDown, Loader2 } from "lucide-react";
 
 // Fallback API URL if env var is missing
 const API_URL = "https://ebby2kzpz6.execute-api.ap-south-1.amazonaws.com/Prod";
